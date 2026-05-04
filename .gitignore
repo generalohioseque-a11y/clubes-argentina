@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+geocode_progress.json
+localidades_geocoded.json
+completar_coordenadas.py
+faltantes.txt
+~$*
+*.dbf
+*.shp
+*.shx
+*.prj
+*.cst
