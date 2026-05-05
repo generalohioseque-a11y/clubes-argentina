@@ -56,6 +56,36 @@
         .filter-box {
             margin: 10px 0 8px 0;
         }
+
+        .filter-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .checklist {
+            max-height: 140px;
+            overflow: auto;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 6px;
+            background: white;
+        }
+
+        .checkitem {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            padding: 4px 2px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkitem input {
+            cursor: pointer;
+        }
         
         .filter-box select {
             width: 100%;
@@ -239,6 +269,7 @@
             color: #333;
             line-height: 1.2;
             display: -webkit-box;
+            line-clamp: 2;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
@@ -524,15 +555,18 @@
         </div>
         
         <div class="filter-box">
-            <select id="provincia-select">
-                <option value="all">Todas las provincias</option>
-            </select>
+            <div class="filter-title">Provincias</div>
+            <div class="checklist" id="provincia-checklist"></div>
         </div>
         
         <div class="filter-box">
-            <select id="liga-select">
-                <option value="all">Todas las ligas</option>
-            </select>
+            <div class="filter-title">Ligas</div>
+            <div class="checklist" id="liga-checklist"></div>
+        </div>
+
+        <div class="filter-box">
+            <div class="filter-title">Divisiones</div>
+            <div class="checklist" id="division-checklist"></div>
         </div>
 
         <button id="adv-toggle" style="width:100%;margin-top:8px;padding:8px;background:#f8f9fa;color:#333;border:1px solid #e0e0e0;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">🔍 Filtros avanzados</button>
@@ -617,8 +651,9 @@
         
         // Store all markers for filtering
         const allMarkers = [];
-        let currentLigaFilter = 'all';
-        let currentProvinciaFilter = 'all';
+        const selectedProvincias = new Set();
+        const selectedLigas = new Set();
+        const selectedDivisiones = new Set();
         let currentNombreFilter = '';
         let currentCiudadFilter = '';
         let currentLogoFilter = 'all';
@@ -654,39 +689,42 @@
         window.clubsIndex = clubs;
         initializeSearch(clubs);
         
-        // Initialize province filter
-        const allProvincias = [...new Set(clubs.map(c => c.provincia))].filter(p => p && p !== 'N/A').sort();
-        const provinciaSelect = document.getElementById('provincia-select');
-        
-        allProvincias.forEach(prov => {
-            const option = document.createElement('option');
-            option.value = prov;
-            option.textContent = prov;
-            provinciaSelect.appendChild(option);
-        });
-        
-        provinciaSelect.addEventListener('change', (e) => {
-            currentProvinciaFilter = e.target.value;
-            filterMarkers();
-        });
-        
-        // Initialize league filter
-        const allLigas = [...new Set([...clubs.map(c => c.liga_afiliada), ...clubs.map(c => c.division)])].sort();
-        const ligaSelect = document.getElementById('liga-select');
-        
-        // Populate select dropdown with leagues
-        allLigas.forEach(liga => {
-            const option = document.createElement('option');
-            option.value = liga;
-            option.textContent = liga;
-            ligaSelect.appendChild(option);
-        });
-        
-        // Handle league selection change
-        ligaSelect.addEventListener('change', (e) => {
-            currentLigaFilter = e.target.value;
-            filterMarkers();
-        });
+        function buildChecklist(containerId, items, selectedSet) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            items.forEach(value => {
+                const id = `${containerId}-${value}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const row = document.createElement('label');
+                row.className = 'checkitem';
+                row.htmlFor = id;
+                row.innerHTML = `<input type="checkbox" id="${id}" data-value="${value}"> <span>${value}</span>`;
+                const cb = row.querySelector('input');
+                cb.addEventListener('change', () => {
+                    if (cb.checked) selectedSet.add(value);
+                    else selectedSet.delete(value);
+                    filterMarkers();
+                });
+                container.appendChild(row);
+            });
+        }
+
+        // Provinces checklist
+        const allProvincias = [...new Set(clubs.map(c => c.provincia))]
+            .filter(p => p && p !== 'N/A')
+            .sort();
+        buildChecklist('provincia-checklist', allProvincias, selectedProvincias);
+
+        // Leagues checklist
+        const allLigas = [...new Set(clubs.map(c => c.liga_afiliada))]
+            .filter(v => v && v !== 'N/A')
+            .sort();
+        buildChecklist('liga-checklist', allLigas, selectedLigas);
+
+        // Divisions checklist
+        const allDivisiones = [...new Set(clubs.map(c => c.division))]
+            .filter(v => v && v !== 'N/A')
+            .sort();
+        buildChecklist('division-checklist', allDivisiones, selectedDivisiones);
 
         // Advanced filters toggle
         const advToggle = document.getElementById('adv-toggle');
@@ -716,14 +754,17 @@
             currentNombreFilter = '';
             currentCiudadFilter = '';
             currentLogoFilter = 'all';
-            currentProvinciaFilter = 'all';
-            currentLigaFilter = 'all';
+            selectedProvincias.clear();
+            selectedLigas.clear();
+            selectedDivisiones.clear();
 
             document.getElementById('search-input').value = '';
             ciudadInput.value = '';
             logoSelect.value = 'all';
-            provinciaSelect.value = 'all';
-            ligaSelect.value = 'all';
+
+            document.querySelectorAll('#provincia-checklist input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('#liga-checklist input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('#division-checklist input[type="checkbox"]').forEach(cb => cb.checked = false);
 
             filterMarkers();
         });
@@ -924,11 +965,16 @@
         function applyFilters(clubsList) {
             let filtered = clubsList;
 
-            if (currentProvinciaFilter !== 'all') {
-                filtered = filtered.filter(club => club.provincia === currentProvinciaFilter);
+            if (selectedProvincias.size > 0) {
+                filtered = filtered.filter(club => selectedProvincias.has(club.provincia));
             }
-            if (currentLigaFilter !== 'all') {
-                filtered = filtered.filter(club => club.liga_afiliada === currentLigaFilter || club.division === currentLigaFilter);
+
+            if (selectedLigas.size > 0) {
+                filtered = filtered.filter(club => selectedLigas.has(club.liga_afiliada));
+            }
+
+            if (selectedDivisiones.size > 0) {
+                filtered = filtered.filter(club => selectedDivisiones.has(club.division));
             }
             if (currentNombreFilter) {
                 const q = currentNombreFilter.toLowerCase();
