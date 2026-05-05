@@ -83,6 +83,10 @@
             user-select: none;
         }
 
+        .checkitem.dim {
+            opacity: 0.35;
+        }
+
         .checkitem input {
             cursor: pointer;
         }
@@ -269,6 +273,7 @@
             color: #333;
             line-height: 1.2;
             display: -webkit-box;
+            line-clamp: 2;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
@@ -653,6 +658,9 @@
         const selectedProvincias = new Set();
         const selectedLigas = new Set();
         const selectedDivisiones = new Set();
+        let provinciaRows = {};
+        let ligaRows = {};
+        let divisionRows = {};
         let currentNombreFilter = '';
         let currentCiudadFilter = '';
         let currentLogoFilter = 'all';
@@ -691,6 +699,7 @@
         function buildChecklist(containerId, items, selectedSet) {
             const container = document.getElementById(containerId);
             container.innerHTML = '';
+            const rows = {};
             items.forEach(value => {
                 const id = `${containerId}-${value}`.replace(/[^a-zA-Z0-9_-]/g, '_');
                 const row = document.createElement('label');
@@ -704,26 +713,85 @@
                     filterMarkers();
                 });
                 container.appendChild(row);
+                rows[value] = row;
             });
+            return rows;
         }
 
         // Provinces checklist
         const allProvincias = [...new Set(clubs.map(c => c.provincia))]
             .filter(p => p && p !== 'N/A')
             .sort();
-        buildChecklist('provincia-checklist', allProvincias, selectedProvincias);
+        provinciaRows = buildChecklist('provincia-checklist', allProvincias, selectedProvincias);
 
         // Leagues checklist
         const allLigas = [...new Set(clubs.map(c => c.liga_afiliada))]
             .filter(v => v && v !== 'N/A')
             .sort();
-        buildChecklist('liga-checklist', allLigas, selectedLigas);
+        ligaRows = buildChecklist('liga-checklist', allLigas, selectedLigas);
 
         // Divisions checklist
         const allDivisiones = [...new Set(clubs.map(c => c.division))]
             .filter(v => v && v !== 'N/A')
             .sort();
-        buildChecklist('division-checklist', allDivisiones, selectedDivisiones);
+        divisionRows = buildChecklist('division-checklist', allDivisiones, selectedDivisiones);
+
+        function clubMatchesTextLogoFilters(club) {
+            if (currentNombreFilter) {
+                const q = currentNombreFilter.toLowerCase();
+                if (!club.nombre || !club.nombre.toLowerCase().includes(q)) return false;
+            }
+            if (currentCiudadFilter) {
+                const q = currentCiudadFilter.toLowerCase();
+                if (!club.ciudad || !club.ciudad.toLowerCase().includes(q)) return false;
+            }
+            if (currentLogoFilter !== 'all') {
+                if (currentLogoFilter === 'yes' && !club.has_logo) return false;
+                if (currentLogoFilter === 'no' && club.has_logo) return false;
+            }
+            return true;
+        }
+
+        function updateChecklistAvailability() {
+            const provinciaCounts = {};
+            const ligaCounts = {};
+            const divisionCounts = {};
+
+            clubs.forEach(club => {
+                if (!clubMatchesTextLogoFilters(club)) return;
+
+                // Provincias availability depends on selected ligas/divisiones
+                if ((selectedLigas.size === 0 || selectedLigas.has(club.liga_afiliada)) &&
+                    (selectedDivisiones.size === 0 || selectedDivisiones.has(club.division))) {
+                    provinciaCounts[club.provincia] = (provinciaCounts[club.provincia] || 0) + 1;
+                }
+
+                // Ligas availability depends on selected provincias/divisiones
+                if ((selectedProvincias.size === 0 || selectedProvincias.has(club.provincia)) &&
+                    (selectedDivisiones.size === 0 || selectedDivisiones.has(club.division))) {
+                    ligaCounts[club.liga_afiliada] = (ligaCounts[club.liga_afiliada] || 0) + 1;
+                }
+
+                // Divisiones availability depends on selected provincias/ligas
+                if ((selectedProvincias.size === 0 || selectedProvincias.has(club.provincia)) &&
+                    (selectedLigas.size === 0 || selectedLigas.has(club.liga_afiliada))) {
+                    divisionCounts[club.division] = (divisionCounts[club.division] || 0) + 1;
+                }
+            });
+
+            Object.entries(provinciaRows).forEach(([value, row]) => {
+                const count = provinciaCounts[value] || 0;
+                row.classList.toggle('dim', count === 0);
+            });
+            Object.entries(ligaRows).forEach(([value, row]) => {
+                const count = ligaCounts[value] || 0;
+                row.classList.toggle('dim', count === 0);
+            });
+            Object.entries(divisionRows).forEach(([value, row]) => {
+                const count = divisionCounts[value] || 0;
+                row.classList.toggle('dim', count === 0);
+            });
+        }
 
         // Advanced filters toggle
         const advToggle = document.getElementById('adv-toggle');
@@ -1035,6 +1103,8 @@
                 .filter(m => markerGroup.hasLayer(m))
                 .reduce((acc, m) => acc + applyFilters(m.clubsData).length, 0);
             document.getElementById('stat-total').textContent = visibleClubs;
+
+            updateChecklistAvailability();
         }
         
         
