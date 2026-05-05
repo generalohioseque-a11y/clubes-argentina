@@ -500,18 +500,14 @@
         <div class="info-stat"> Total: <strong id="stat-total">-</strong></div>
         <div class="info-stat">🏟️ Con Logo: <strong id="stat-logos">-</strong></div>
         <div class="info-stat" style="font-size: 12px; margin-top: 10px; color: #666;">💡 Busca por nombre o filtra por liga</div>
-        <div class="credit">Datos recopilados por <a href="https://www.instagram.com/falsobohemio" target="_blank">falsobohemio</a></div>
+        <div class="credit">Datos recopilados por <a href="https://x.com/falsobohemio" target="_blank">falsobohemio</a></div>
     </div>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <script src="clubs_data.js"></script>
+    <script src="clubs_data.js?v=5"></script>
     
     <script>
-        // Register service worker para caché
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW not available'));
-        }
         // Map initialization
         const map = L.map('map').setView([-38.5, -63.5], 4);
         
