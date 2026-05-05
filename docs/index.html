@@ -337,9 +337,132 @@
             color: #333;
             font-size: 14px;
         }
+        
+        .credit {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .credit a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .credit a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Mobile toggle button */
+        .panel-toggle {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            width: 44px;
+            height: 44px;
+            font-size: 22px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .panel-toggle {
+                display: flex;
+            }
+            
+            .info-panel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 85%;
+                max-width: 320px;
+                height: 100%;
+                border-radius: 0;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                overflow-y: auto;
+                z-index: 1500;
+                max-height: none;
+                min-width: unset;
+            }
+            
+            .info-panel.open {
+                transform: translateX(0);
+            }
+            
+            .sidebar {
+                width: 100%;
+                right: -100%;
+            }
+            
+            .sidebar.open {
+                right: 0;
+            }
+            
+            .leaflet-popup-content {
+                max-width: 260px;
+                font-size: 12px;
+            }
+            
+            .club-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .custom-marker {
+                width: 36px;
+                height: 36px;
+                border-radius: 6px;
+                border: 2px solid white;
+            }
+            
+            .club-count-badge {
+                font-size: 9px;
+                min-width: 16px;
+                height: 16px;
+                top: -4px;
+                right: -4px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .info-panel {
+                width: 90%;
+                max-width: none;
+                padding: 12px;
+            }
+            
+            .info-title {
+                font-size: 14px;
+            }
+            
+            .sidebar-title {
+                font-size: 15px;
+            }
+            
+            .sidebar-logo {
+                width: 70px;
+                height: 70px;
+            }
+        }
     </style>
 </head>
 <body>
+    <button class="panel-toggle" id="panel-toggle" onclick="togglePanel()">☰</button>
+    <div class="panel-overlay" id="panel-overlay" onclick="togglePanel()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:1400;"></div>
     <div id="map"></div>
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -377,6 +500,7 @@
         <div class="info-stat"> Total: <strong id="stat-total">-</strong></div>
         <div class="info-stat">🏟️ Con Logo: <strong id="stat-logos">-</strong></div>
         <div class="info-stat" style="font-size: 12px; margin-top: 10px; color: #666;">💡 Busca por nombre o filtra por liga</div>
+        <div class="credit">Datos recopilados por <a href="https://www.instagram.com/falsobohemio" target="_blank">falsobohemio</a></div>
     </div>
     
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -847,6 +971,15 @@
             sidebar.classList.remove('open');
         }
         
+        function togglePanel() {
+            const panel = document.querySelector('.info-panel');
+            const overlay = document.getElementById('panel-overlay');
+            const btn = document.getElementById('panel-toggle');
+            panel.classList.toggle('open');
+            const isOpen = panel.classList.contains('open');
+            overlay.style.display = isOpen ? 'block' : 'none';
+            btn.textContent = isOpen ? '✕' : '☰';
+        }
     </script>
 </body>
 </html>
