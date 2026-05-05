@@ -557,6 +557,15 @@
             >
             <div class="search-suggestions" id="suggestions"></div>
         </div>
+
+        <div class="filter-box">
+            <div class="filter-title">Mapa base</div>
+            <select id="basemap-select">
+                <option value="voyager">Rutas (Voyager)</option>
+                <option value="osm">Rutas (OSM)</option>
+                <option value="light">Claro (Light)</option>
+            </select>
+        </div>
         
         <div class="filter-box">
             <div class="filter-title">Provincias</div>
@@ -611,11 +620,47 @@
         }
         // Map initialization
         const map = L.map('map').setView([-38.5, -63.5], 4);
-        
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '© OpenStreetMap, © CartoDB',
-            maxZoom: 19
-        }).addTo(map);
+
+        const baseLayers = {
+            voyager: L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap, © CartoDB',
+                maxZoom: 19
+            }),
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 19
+            }),
+            light: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '© OpenStreetMap, © CartoDB',
+                maxZoom: 19
+            })
+        };
+
+        let currentBaseKey = 'voyager';
+        baseLayers[currentBaseKey].addTo(map);
+
+        const layersControl = L.control.layers(
+            {
+                'Rutas (Voyager)': baseLayers.voyager,
+                'Rutas (OSM)': baseLayers.osm,
+                'Claro (Light)': baseLayers.light,
+            },
+            null,
+            { position: 'topright' }
+        ).addTo(map);
+
+        function setBasemap(key) {
+            if (!baseLayers[key] || key === currentBaseKey) return;
+            map.removeLayer(baseLayers[currentBaseKey]);
+            currentBaseKey = key;
+            baseLayers[currentBaseKey].addTo(map);
+        }
+
+        const basemapSelect = document.getElementById('basemap-select');
+        basemapSelect.value = currentBaseKey;
+        basemapSelect.addEventListener('change', (e) => {
+            setBasemap(e.target.value);
+        });
         
         // Marker cluster con contador de clubes (no de marcadores)
         const markerGroup = L.markerClusterGroup({
