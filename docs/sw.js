@@ -1,14 +1,12 @@
-const CACHE_NAME = 'clubes-map-v2';
+const CACHE_NAME = 'clubes-map-v3';
 const ASSETS_TO_CACHE = [
     '/',
-    '/mapa.html',
-    '/clubs_data.json',
+    '/index.html',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
     'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
     'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css',
     'https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css',
     'https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js',
-    'https://b.basemaps.cartocdn.com/light_all/',
 ];
 
 // Instalar y cachear assets
@@ -49,8 +47,8 @@ self.addEventListener('fetch', event => {
         return;
     }
     
-    // Para JSON de clubs, usar network first
-    if (request.url.includes('clubs_data.json')) {
+    // Para datos de clubs, usar network first
+    if (request.url.includes('clubs_data.js')) {
         return event.respondWith(
             fetch(request)
                 .then(response => {
@@ -94,7 +92,7 @@ self.addEventListener('fetch', event => {
                 return fetch(request);
             })
             .catch(() => {
-                return caches.match('/mapa.html');
+                return caches.match('/index.html');
             })
     );
 });
