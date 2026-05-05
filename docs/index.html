@@ -74,7 +74,45 @@
             border-color: #007bff;
             box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
         }
-        
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-row input[type="text"] {
+            flex: 1;
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .filter-row input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+
+        .filter-row select {
+            width: 110px;
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+            background: white;
+            cursor: pointer;
+        }
+
+        .filter-row select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+
         .search-suggestions {
             position: absolute;
             top: 100%;
@@ -496,8 +534,22 @@
                 <option value="all">Todas las ligas</option>
             </select>
         </div>
-        
-        <div class="info-stat"> Total: <strong id="stat-total">-</strong></div>
+
+        <button id="adv-toggle" style="width:100%;margin-top:8px;padding:8px;background:#f8f9fa;color:#333;border:1px solid #e0e0e0;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">🔍 Filtros avanzados</button>
+
+        <div id="advanced-filters" style="display:none;margin-top:8px;">
+            <div class="filter-row">
+                <input type="text" id="ciudad-input" placeholder="Ciudad..." autocomplete="off">
+                <select id="logo-select">
+                    <option value="all">Logo: Todos</option>
+                    <option value="yes">Con logo</option>
+                    <option value="no">Sin logo</option>
+                </select>
+            </div>
+            <button id="clear-filters" style="width:100%;margin-top:8px;padding:8px;background:#fff;color:#dc3545;border:1px solid #dc3545;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Limpiar filtros</button>
+        </div>
+
+        <div class="info-stat" style="margin-top:10px;"> Total: <strong id="stat-total">-</strong></div>
         <div class="info-stat">🏟️ Con Logo: <strong id="stat-logos">-</strong></div>
         <button onclick="randomClub()" style="width:100%;margin-top:10px;padding:10px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;">🎲 Club Random</button>
         <div class="info-stat" style="font-size: 12px; margin-top: 10px; color: #666;">💡 Busca por nombre o filtra por liga</div>
@@ -537,14 +589,9 @@
             removeOutsideVisibleBounds: true,
             animateAddingMarkers: false,
             iconCreateFunction: function(cluster) {
-                // Sumar el total de clubes filtrados en el cluster
+                // Sumar el total de clubes filtrados en el cluster usando todos los filtros activos
                 const totalClubes = cluster.getAllChildMarkers().reduce((sum, marker) => {
-                    const clubsList = marker.clubsData;
-                    if (currentLigaFilter === 'all') {
-                        return sum + clubsList.length;
-                    }
-                    const filtered = clubsList.filter(club => club.liga_afiliada === currentLigaFilter || club.division === currentLigaFilter);
-                    return sum + filtered.length;
+                    return sum + applyFilters(marker.clubsData).length;
                 }, 0);
                 
                 // Usar el estilo por defecto pero con el número de clubes
@@ -572,6 +619,9 @@
         const allMarkers = [];
         let currentLigaFilter = 'all';
         let currentProvinciaFilter = 'all';
+        let currentNombreFilter = '';
+        let currentCiudadFilter = '';
+        let currentLogoFilter = 'all';
         
         // Icon creator
         function makeIcon(logoPath, clubCount) {
@@ -637,7 +687,47 @@
             currentLigaFilter = e.target.value;
             filterMarkers();
         });
-        
+
+        // Advanced filters toggle
+        const advToggle = document.getElementById('adv-toggle');
+        const advPanel = document.getElementById('advanced-filters');
+        advToggle.addEventListener('click', () => {
+            const showing = advPanel.style.display === 'block';
+            advPanel.style.display = showing ? 'none' : 'block';
+            advToggle.textContent = showing ? '🔍 Filtros avanzados' : '🔼 Ocultar filtros';
+        });
+
+        // City filter
+        const ciudadInput = document.getElementById('ciudad-input');
+        ciudadInput.addEventListener('input', (e) => {
+            currentCiudadFilter = e.target.value.trim();
+            filterMarkers();
+        });
+
+        // Logo status filter
+        const logoSelect = document.getElementById('logo-select');
+        logoSelect.addEventListener('change', (e) => {
+            currentLogoFilter = e.target.value;
+            filterMarkers();
+        });
+
+        // Clear all filters
+        document.getElementById('clear-filters').addEventListener('click', () => {
+            currentNombreFilter = '';
+            currentCiudadFilter = '';
+            currentLogoFilter = 'all';
+            currentProvinciaFilter = 'all';
+            currentLigaFilter = 'all';
+
+            document.getElementById('search-input').value = '';
+            ciudadInput.value = '';
+            logoSelect.value = 'all';
+            provinciaSelect.value = 'all';
+            ligaSelect.value = 'all';
+
+            filterMarkers();
+        });
+
         // Create markers
         for (const [key, clubsList] of Object.entries(locationMap)) {
             const [lat, lng] = key.split(',').map(Number);
@@ -717,14 +807,18 @@
             
             searchInput.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase().trim();
-                
+
+                // Update map filter by name
+                currentNombreFilter = query;
+                filterMarkers();
+
                 if (query.length < 2) {
                     suggestionsDiv.classList.remove('active');
                     return;
                 }
-                
+
                 // Search for clubs matching query
-                const results = clubs.filter(club => 
+                const results = clubs.filter(club =>
                     club.nombre.toLowerCase().includes(query)
                 ).slice(0, 10); // Limit to 10 results
                 
@@ -826,27 +920,49 @@
             }
         }
         
-        // Filter markers by league
+        // Apply all active filters with AND logic
+        function applyFilters(clubsList) {
+            let filtered = clubsList;
+
+            if (currentProvinciaFilter !== 'all') {
+                filtered = filtered.filter(club => club.provincia === currentProvinciaFilter);
+            }
+            if (currentLigaFilter !== 'all') {
+                filtered = filtered.filter(club => club.liga_afiliada === currentLigaFilter || club.division === currentLigaFilter);
+            }
+            if (currentNombreFilter) {
+                const q = currentNombreFilter.toLowerCase();
+                filtered = filtered.filter(club => club.nombre.toLowerCase().includes(q));
+            }
+            if (currentCiudadFilter) {
+                const q = currentCiudadFilter.toLowerCase();
+                filtered = filtered.filter(club => club.ciudad.toLowerCase().includes(q));
+            }
+            if (currentLogoFilter !== 'all') {
+                if (currentLogoFilter === 'yes') {
+                    filtered = filtered.filter(club => club.has_logo);
+                } else if (currentLogoFilter === 'no') {
+                    filtered = filtered.filter(club => !club.has_logo);
+                }
+            }
+
+            return filtered;
+        }
+
+        // Filter markers by all active filters (AND logic)
         function filterMarkers() {
             // Clear all markers
             markerGroup.clearLayers();
-            
-            // Filter and add markers based on province and league
+
+            // Filter and add markers
             allMarkers.forEach(marker => {
                 const clubsList = marker.clubsData;
-                let filteredClubs = clubsList;
-                
-                if (currentProvinciaFilter !== 'all') {
-                    filteredClubs = filteredClubs.filter(club => club.provincia === currentProvinciaFilter);
-                }
-                if (currentLigaFilter !== 'all') {
-                    filteredClubs = filteredClubs.filter(club => club.liga_afiliada === currentLigaFilter || club.division === currentLigaFilter);
-                }
-                
+                const filteredClubs = applyFilters(clubsList);
+
                 if (filteredClubs.length > 0) {
                     // Update popup with only filtered clubs
                     marker.setPopupContent(buildPopup(filteredClubs));
-                    
+
                     // Update icon to show logo of a filtered club
                     const clubWithLogo = filteredClubs.find(c => c.has_logo);
                     if (clubWithLogo) {
@@ -854,7 +970,7 @@
                     } else {
                         marker.setIcon(new L.Icon.Default());
                     }
-                    
+
                     // Update click handler
                     marker.off('click');
                     marker.on('click', () => {
@@ -864,26 +980,16 @@
                             marker.openPopup();
                         }
                     });
-                    
+
                     markerGroup.addLayer(marker);
                 }
             });
-            
+
             // Update stats
             const visibleClubs = allMarkers
                 .filter(m => markerGroup.hasLayer(m))
-                .reduce((acc, m) => {
-                    let filteredClubs = m.clubsData;
-                    if (currentProvinciaFilter !== 'all') {
-                        filteredClubs = filteredClubs.filter(club => club.provincia === currentProvinciaFilter);
-                    }
-                    if (currentLigaFilter !== 'all') {
-                        filteredClubs = filteredClubs.filter(club => club.liga_afiliada === currentLigaFilter || club.division === currentLigaFilter);
-                    }
-                    return acc + filteredClubs.length;
-                }, 0);
+                .reduce((acc, m) => acc + applyFilters(m.clubsData).length, 0);
             document.getElementById('stat-total').textContent = visibleClubs;
-            
         }
         
         
