@@ -508,6 +508,16 @@
     <script src="clubs_data.js?v=5"></script>
     
     <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                if (!regs || regs.length === 0) return;
+                return Promise.all(regs.map(r => r.unregister()));
+            }).then(() => {
+                if (window.caches && caches.keys) {
+                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+                }
+            }).catch(() => {});
+        }
         // Map initialization
         const map = L.map('map').setView([-38.5, -63.5], 4);
         
