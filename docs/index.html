@@ -699,10 +699,15 @@
         preloadNearbyLogos();
         
         // Update stats
-        document.getElementById('stat-total').textContent = clubs.length;
-        document.getElementById('stat-logos').textContent = logoCount;
+        console.log('Updating stats...', clubs.length, logoCount);
+        const totalEl = document.getElementById('stat-total');
+        const logosEl = document.getElementById('stat-logos');
+        console.log('Elements found:', totalEl, logosEl);
         
-        console.log(`Loaded: ${clubs.length} clubs, ${logoCount} with logos`);
+        if (totalEl) totalEl.textContent = clubs.length;
+        if (logosEl) logosEl.textContent = logoCount;
+        
+        console.log(`Stats updated: ${clubs.length} clubs, ${logoCount} with logos`);
         
         // Search functionality
         function initializeSearch(clubs) {
