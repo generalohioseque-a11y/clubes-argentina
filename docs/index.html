@@ -499,6 +499,7 @@
         
         <div class="info-stat"> Total: <strong id="stat-total">-</strong></div>
         <div class="info-stat">🏟️ Con Logo: <strong id="stat-logos">-</strong></div>
+        <button onclick="randomClub()" style="width:100%;margin-top:10px;padding:10px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;">🎲 Club Random</button>
         <div class="info-stat" style="font-size: 12px; margin-top: 10px; color: #666;">💡 Busca por nombre o filtra por liga</div>
         <div class="credit">Datos recopilados por <a href="https://x.com/falsobohemio" target="_blank">falsobohemio</a></div>
     </div>
@@ -990,6 +991,17 @@
             const isOpen = panel.classList.contains('open');
             overlay.style.display = isOpen ? 'block' : 'none';
             btn.textContent = isOpen ? '✕' : '☰';
+        }
+        
+        function randomClub() {
+            if (!clubs || clubs.length === 0) {
+                alert('No hay clubes disponibles');
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * clubs.length);
+            const randomClub = clubs[randomIndex];
+            openSidebar(randomClub);
+            map.setView([randomClub.lat, randomClub.long], 12);
         }
     </script>
 </body>
