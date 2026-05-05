@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Clubes de Argentina</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; width: 100%; font-family: Arial, sans-serif; }
+        #map { height: 100%; width: 100%; }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            font-size: 14px;
+            min-width: 250px;
+            max-width: 350px;
+        }
+        
+        .info-title { font-weight: bold; font-size: 16px; margin-bottom: 8px; }
+        .info-stat { margin: 5px 0; }
+        .info-stat strong { color: #007bff; }
+        
+        .search-box {
+            margin: 10px 0 8px 0;
+            position: relative;
+        }
+        
+        .search-box input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+        
+        .filter-box {
+            margin: 10px 0 8px 0;
+        }
+        
+        .filter-box select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+            box-sizing: border-box;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .filter-box select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-row input[type="text"] {
+            flex: 1;
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+        }
+
+        .filter-row input[type="text"]:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+
+        .filter-row select {
+            width: 110px;
+            padding: 8px 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 4px;
+            font-size: 13px;
+            box-sizing: border-box;
+            background: white;
+            cursor: pointer;
+        }
+
+        .filter-row select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 4px rgba(0, 123, 255, 0.3);
+        }
+
+        .search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-suggestions.active {
+            display: block;
+        }
+        
+        .search-suggestion {
+            padding: 8px 10px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 12px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .search-suggestion:hover {
+            background: #f5f5f5;
+        }
+        
+        .search-suggestion-bold {
+            font-weight: 600;
+            color: #007bff;
+        }
+        
+        .search-no-results {
+            padding: 10px;
+            color: #999;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        .leaflet-popup-content {
+            font-size: 13px;
+            font-family: Arial, sans-serif;
+            max-width: 400px;
+        }
+        
+        .club-info {
+            line-height: 1.6;
+        }
+        
+        .club-info-row {
+            margin: 4px 0;
+            display: flex;
+        }
+        
+        .club-info-label {
+            font-weight: 600;
+            color: #555;
+            min-width: 100px;
+        }
+        
+        .club-info-value {
+            color: #333;
+        }
+        
+        .club-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            max-height: 350px;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+        
+        @media (min-width: 250px) {
+            .club-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (min-width: 320px) {
+            .club-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+        
+        .club-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 4px;
+            background: #fafafa;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            text-align: center;
+        }
+        
+        .club-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            background: #fff;
+        }
+        
+        .club-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            object-fit: contain;
+            border: 2px solid #ddd;
+            flex-shrink: 0;
+        }
+        
+        .club-name {
+            font-weight: 600;
+            font-size: 10px;
+            word-break: break-word;
+            color: #333;
+            line-height: 1.2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .custom-marker {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            border: 3px solid white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            overflow: hidden;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .custom-marker img { width: 100%; height: 100%; object-fit: contain; }
+        
+        /* Override cluster styles to be square instead of circular */
+        .marker-cluster {
+            border-radius: 8px !important;
+        }
+        
+        .marker-cluster div {
+            border-radius: 8px !important;
+        }
+        
+        .club-count-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #007bff;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 20px;
+            height: 20px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+            padding: 0 4px;
+            z-index: 1;
+        }
+        
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 450px;
+            height: 100%;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+        }
+        
+        .sidebar.open {
+            right: 0;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            background: #007bff;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        .sidebar-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .sidebar-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        
+        .sidebar-content {
+            padding: 20px;
+        }
+        
+        .sidebar-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 3px solid #ddd;
+            margin: 0 auto 15px;
+            display: block;
+            object-fit: cover;
+        }
+        
+        .sidebar-info-row {
+            margin: 12px 0;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-info-label {
+            font-weight: 600;
+            color: #555;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .sidebar-info-value {
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .credit {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        .credit a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .credit a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Mobile toggle button */
+        .panel-toggle {
+            display: none;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1001;
+            background: white;
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            width: 44px;
+            height: 44px;
+            font-size: 22px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .panel-toggle {
+                display: flex;
+            }
+            
+            .info-panel {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 85%;
+                max-width: 320px;
+                height: 100%;
+                border-radius: 0;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                overflow-y: auto;
+                z-index: 1500;
+                max-height: none;
+                min-width: unset;
+            }
+            
+            .info-panel.open {
+                transform: translateX(0);
+            }
+            
+            .sidebar {
+                width: 100%;
+                right: -100%;
+            }
+            
+            .sidebar.open {
+                right: 0;
+            }
+            
+            .leaflet-popup-content {
+                max-width: 260px;
+                font-size: 12px;
+            }
+            
+            .club-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .custom-marker {
+                width: 36px;
+                height: 36px;
+                border-radius: 6px;
+                border: 2px solid white;
+            }
+            
+            .club-count-badge {
+                font-size: 9px;
+                min-width: 16px;
+                height: 16px;
+                top: -4px;
+                right: -4px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .info-panel {
+                width: 90%;
+                max-width: none;
+                padding: 12px;
+            }
+            
+            .info-title {
+                font-size: 14px;
+            }
+            
+            .sidebar-title {
+                font-size: 15px;
+            }
+            
+            .sidebar-logo {
+                width: 70px;
+                height: 70px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="panel-toggle" id="panel-toggle" onclick="togglePanel()">☰</button>
+    <div class="panel-overlay" id="panel-overlay" onclick="togglePanel()" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);z-index:1400;"></div>
+    <div id="map"></div>
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">Información del Club</div>
+            <button class="sidebar-close" onclick="closeSidebar()">×</button>
+        </div>
+        <div class="sidebar-content" id="sidebar-content">
+        </div>
+    </div>
+    <div class="info-panel">
+        <div class="info-title">🗺️ Clubes Argentina</div>
+        
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="search-input" 
+                placeholder="Buscar club..."
+                autocomplete="off"
+            >
+            <div class="search-suggestions" id="suggestions"></div>
+        </div>
+        
+        <div class="filter-box">
+            <select id="provincia-select">
+                <option value="all">Todas las provincias</option>
+            </select>
+        </div>
+        
+        <div class="filter-box">
+            <select id="liga-select">
+                <option value="all">Todas las ligas</option>
+            </select>
+        </div>
+
+        <button id="adv-toggle" style="width:100%;margin-top:8px;padding:8px;background:#f8f9fa;color:#333;border:1px solid #e0e0e0;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">🔍 Filtros avanzados</button>
+
+        <div id="advanced-filters" style="display:none;margin-top:8px;">
+            <div class="filter-row">
+                <input type="text" id="ciudad-input" placeholder="Ciudad..." autocomplete="off">
+                <select id="logo-select">
+                    <option value="all">Logo: Todos</option>
+                    <option value="yes">Con logo</option>
+                    <option value="no">Sin logo</option>
+                </select>
+            </div>
+            <button id="clear-filters" style="width:100%;margin-top:8px;padding:8px;background:#fff;color:#dc3545;border:1px solid #dc3545;border-radius:4px;cursor:pointer;font-size:12px;font-weight:600;">Limpiar filtros</button>
+        </div>
+
+        <div class="info-stat" style="margin-top:10px;"> Total: <strong id="stat-total">-</strong></div>
+        <div class="info-stat">🏟️ Con Logo: <strong id="stat-logos">-</strong></div>
+        <button onclick="randomClub()" style="width:100%;margin-top:10px;padding:10px;background:#007bff;color:white;border:none;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;">🎲 Club Random</button>
+        <div class="info-stat" style="font-size: 12px; margin-top: 10px; color: #666;">💡 Busca por nombre o filtra por liga</div>
+        <div class="credit">Datos recopilados por <a href="https://x.com/falsobohemio" target="_blank">falsobohemio</a></div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    <script src="clubs_data.js?v=5"></script>
+    
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                if (!regs || regs.length === 0) return;
+                return Promise.all(regs.map(r => r.unregister()));
+            }).then(() => {
+                if (window.caches && caches.keys) {
+                    caches.keys().then(keys => Promise.all(keys.map(k => caches.delete(k))));
+                }
+            }).catch(() => {});
+        }
+        // Map initialization
+        const map = L.map('map').setView([-38.5, -63.5], 4);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap, © CartoDB',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Marker cluster con contador de clubes (no de marcadores)
+        const markerGroup = L.markerClusterGroup({
+            maxClusterRadius: 20,
+            spiderfyOnMaxZoom: true,
+            spiderfyDistanceMultiplier: 2,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: true,
+            removeOutsideVisibleBounds: true,
+            animateAddingMarkers: false,
+            iconCreateFunction: function(cluster) {
+                // Sumar el total de clubes filtrados en el cluster usando todos los filtros activos
+                const totalClubes = cluster.getAllChildMarkers().reduce((sum, marker) => {
+                    return sum + applyFilters(marker.clubsData).length;
+                }, 0);
+                
+                // Usar el estilo por defecto pero con el número de clubes
+                const childCount = totalClubes;
+                let c = ' marker-cluster-';
+                if (childCount < 10) {
+                    c += 'small';
+                } else if (childCount < 100) {
+                    c += 'medium';
+                } else {
+                    c += 'large';
+                }
+                return new L.DivIcon({
+                    html: '<div><span>' + childCount + '</span></div>',
+                    className: 'marker-cluster' + c,
+                    iconSize: new L.Point(40, 40)
+                });
+            }
+        });
+        
+        // Store location info
+        const locationMap = {};
+        
+        // Store all markers for filtering
+        const allMarkers = [];
+        let currentLigaFilter = 'all';
+        let currentProvinciaFilter = 'all';
+        let currentNombreFilter = '';
+        let currentCiudadFilter = '';
+        let currentLogoFilter = 'all';
+        
+        // Icon creator
+        function makeIcon(logoPath, clubCount) {
+            let badge = '';
+            if (clubCount && clubCount > 1) {
+                badge = `<div class="club-count-badge">${clubCount}</div>`;
+            }
+            return L.divIcon({
+                html: `<div style="position:relative;"><div class="custom-marker"><img src="${logoPath}" onerror="this.src=''"></div>${badge}</div>`,
+                iconSize: [48, 48],
+                iconAnchor: [24, 24],
+                popupAnchor: [0, -24],
+                className: ''
+            });
+        }
+        
+        // Load data
+        const clubs = clubsData;
+        let logoCount = 0;
+        
+        // Group by location
+        clubs.forEach(club => {
+            const key = club.lat.toFixed(4) + ',' + club.long.toFixed(4);
+            if (!locationMap[key]) locationMap[key] = [];
+            locationMap[key].push(club);
+            if (club.has_logo) logoCount++;
+        });
+        
+        // Create search index
+        window.clubsIndex = clubs;
+        initializeSearch(clubs);
+        
+        // Initialize province filter
+        const allProvincias = [...new Set(clubs.map(c => c.provincia))].filter(p => p && p !== 'N/A').sort();
+        const provinciaSelect = document.getElementById('provincia-select');
+        
+        allProvincias.forEach(prov => {
+            const option = document.createElement('option');
+            option.value = prov;
+            option.textContent = prov;
+            provinciaSelect.appendChild(option);
+        });
+        
+        provinciaSelect.addEventListener('change', (e) => {
+            currentProvinciaFilter = e.target.value;
+            filterMarkers();
+        });
+        
+        // Initialize league filter
+        const allLigas = [...new Set([...clubs.map(c => c.liga_afiliada), ...clubs.map(c => c.division)])].sort();
+        const ligaSelect = document.getElementById('liga-select');
+        
+        // Populate select dropdown with leagues
+        allLigas.forEach(liga => {
+            const option = document.createElement('option');
+            option.value = liga;
+            option.textContent = liga;
+            ligaSelect.appendChild(option);
+        });
+        
+        // Handle league selection change
+        ligaSelect.addEventListener('change', (e) => {
+            currentLigaFilter = e.target.value;
+            filterMarkers();
+        });
+
+        // Advanced filters toggle
+        const advToggle = document.getElementById('adv-toggle');
+        const advPanel = document.getElementById('advanced-filters');
+        advToggle.addEventListener('click', () => {
+            const showing = advPanel.style.display === 'block';
+            advPanel.style.display = showing ? 'none' : 'block';
+            advToggle.textContent = showing ? '🔍 Filtros avanzados' : '🔼 Ocultar filtros';
+        });
+
+        // City filter
+        const ciudadInput = document.getElementById('ciudad-input');
+        ciudadInput.addEventListener('input', (e) => {
+            currentCiudadFilter = e.target.value.trim();
+            filterMarkers();
+        });
+
+        // Logo status filter
+        const logoSelect = document.getElementById('logo-select');
+        logoSelect.addEventListener('change', (e) => {
+            currentLogoFilter = e.target.value;
+            filterMarkers();
+        });
+
+        // Clear all filters
+        document.getElementById('clear-filters').addEventListener('click', () => {
+            currentNombreFilter = '';
+            currentCiudadFilter = '';
+            currentLogoFilter = 'all';
+            currentProvinciaFilter = 'all';
+            currentLigaFilter = 'all';
+
+            document.getElementById('search-input').value = '';
+            ciudadInput.value = '';
+            logoSelect.value = 'all';
+            provinciaSelect.value = 'all';
+            ligaSelect.value = 'all';
+
+            filterMarkers();
+        });
+
+        // Create markers
+        for (const [key, clubsList] of Object.entries(locationMap)) {
+            const [lat, lng] = key.split(',').map(Number);
+            
+            // Get club with logo or first club
+            const club = clubsList.find(c => c.has_logo) || clubsList[0];
+            
+            let marker;
+            if (club.has_logo) {
+                marker = L.marker([lat, lng], {
+                    icon: makeIcon(`LOGOS/${club.id}.png`, clubsList.length)
+                });
+            } else {
+                marker = L.marker([lat, lng]);
+            }
+            
+            // Create popup
+            let popup = '';
+            if (clubsList.length === 1) {
+                const c = clubsList[0];
+                popup = `<div style="text-align: center;"><b>${c.nombre}</b><br><small style="color: #666;">Click para ver más información</small></div>`;
+            } else {
+                popup = `<b style="color: #007bff;">${clubsList.length} clubes en esta ubicación</b><div class="club-grid">`;
+                clubsList.forEach(c => {
+                    popup += `<div class="club-card" data-club-id="${c.id}" title="${c.nombre}">`;
+                    if (c.has_logo) {
+                        popup += `<img src="LOGOS/${c.id}.png" class="club-logo" loading="lazy" onerror="this.style.display='none'">`;
+                    } else {
+                        popup += `<div style="width: 45px; height: 45px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid #ddd;">🏟️</div>`;
+                    }
+                    popup += `<div class="club-name">${c.nombre}</div></div>`;
+                });
+                popup += '</div>';
+            }
+            
+            marker.bindPopup(popup);
+            marker.on('click', () => {
+                if (clubsList.length === 1) {
+                    openSidebar(clubsList[0]);
+                } else {
+                    marker.openPopup();
+                }
+            });
+            
+            // Store marker with its clubs for filtering
+            marker.clubsData = clubsList;
+            allMarkers.push(marker);
+            
+            markerGroup.addLayer(marker);
+        }
+        
+        map.addLayer(markerGroup);
+        
+        // Preload nearby logos on zoom
+        map.on('moveend', () => {
+            preloadNearbyLogos();
+        });
+        
+        // Preload initial logos
+        preloadNearbyLogos();
+        
+        // Update stats
+        console.log('Updating stats...', clubs.length, logoCount);
+        const totalEl = document.getElementById('stat-total');
+        const logosEl = document.getElementById('stat-logos');
+        console.log('Elements found:', totalEl, logosEl);
+        
+        if (totalEl) totalEl.textContent = clubs.length;
+        if (logosEl) logosEl.textContent = logoCount;
+        
+        console.log(`Stats updated: ${clubs.length} clubs, ${logoCount} with logos`);
+        
+        // Search functionality
+        function initializeSearch(clubs) {
+            const searchInput = document.getElementById('search-input');
+            const suggestionsDiv = document.getElementById('suggestions');
+            
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+
+                // Update map filter by name
+                currentNombreFilter = query;
+                filterMarkers();
+
+                if (query.length < 2) {
+                    suggestionsDiv.classList.remove('active');
+                    return;
+                }
+
+                // Search for clubs matching query
+                const results = clubs.filter(club =>
+                    club.nombre.toLowerCase().includes(query)
+                ).slice(0, 10); // Limit to 10 results
+                
+                // Show suggestions
+                if (results.length === 0) {
+                    suggestionsDiv.innerHTML = '<div class="search-no-results">No se encontraron clubes</div>';
+                    suggestionsDiv.classList.add('active');
+                } else {
+                    suggestionsDiv.innerHTML = results.map(club => {
+                        // Highlight the matching text in name
+                        const highlighted = club.nombre.replace(
+                            new RegExp(query, 'gi'),
+                            match => `<span class="search-suggestion-bold">${match}</span>`
+                        );
+                        const location = club.ciudad !== 'N/A' && club.provincia !== 'N/A' 
+                            ? `, ${club.ciudad}, ${club.provincia}` 
+                            : '';
+                        return `
+                            <div class="search-suggestion" data-lat="${club.lat}" data-lng="${club.long}" data-name="${club.nombre}">
+                                ${highlighted}${location}
+                            </div>
+                        `;
+                    }).join('');
+                    suggestionsDiv.classList.add('active');
+                    
+                    // Add click handlers
+                    document.querySelectorAll('.search-suggestion').forEach(el => {
+                        el.addEventListener('click', () => {
+                            const lat = parseFloat(el.dataset.lat);
+                            const lng = parseFloat(el.dataset.lng);
+                            const name = el.dataset.name;
+                            
+                            // Go to club location
+                            map.setView([lat, lng], 14);
+                            
+                            // Close suggestions
+                            suggestionsDiv.classList.remove('active');
+                            searchInput.value = name;
+                            
+                            // Find and click the marker at this location
+                            setTimeout(() => {
+                                const key = lat.toFixed(4) + ',' + lng.toFixed(4);
+                                const clubsList = locationMap[key];
+                                if (clubsList && clubsList.length > 0) {
+                                    // Find the marker and open popup
+                                    markerGroup.getLayers().forEach(marker => {
+                                        const mlat = marker.getLatLng().lat.toFixed(4);
+                                        const mlng = marker.getLatLng().lng.toFixed(4);
+                                        if (mlat === lat.toFixed(4) && mlng === lng.toFixed(4)) {
+                                            marker.openPopup();
+                                        }
+                                    });
+                                }
+                            }, 500);
+                        });
+                    });
+                }
+            });
+            
+            // Close suggestions on click outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-box')) {
+                    suggestionsDiv.classList.remove('active');
+                }
+            });
+            
+            // Global click handler for club cards
+            document.addEventListener('click', (e) => {
+                const clubCard = e.target.closest('.club-card');
+                if (clubCard && clubCard.dataset.clubId) {
+                    e.stopPropagation();
+                    const clubId = parseInt(clubCard.dataset.clubId);
+                    const club = clubs.find(c => c.id === clubId);
+                    if (club) {
+                        openSidebar(club);
+                    }
+                }
+            });
+        }
+        
+        // Build popup HTML for a list of clubs
+        function buildPopup(filteredClubs) {
+            if (filteredClubs.length === 1) {
+                const c = filteredClubs[0];
+                return `<div style="text-align: center;"><b>${c.nombre}</b><br><small style="color: #666;">Click para ver más información</small></div>`;
+            } else {
+                let popup = `<b style="color: #007bff;">${filteredClubs.length} clubes en esta ubicación</b><div class="club-grid">`;
+                filteredClubs.forEach(c => {
+                    popup += `<div class="club-card" data-club-id="${c.id}" title="${c.nombre}">`;
+                    if (c.has_logo) {
+                        popup += `<img src="LOGOS/${c.id}.png" class="club-logo" loading="lazy" onerror="this.style.display='none'">`;
+                    } else {
+                        popup += `<div style="width: 45px; height: 45px; border-radius: 50%; background: #e0e0e0; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 2px solid #ddd;">🏟️</div>`;
+                    }
+                    popup += `<div class="club-name">${c.nombre}</div></div>`;
+                });
+                popup += '</div>';
+                return popup;
+            }
+        }
+        
+        // Apply all active filters with AND logic
+        function applyFilters(clubsList) {
+            let filtered = clubsList;
+
+            if (currentProvinciaFilter !== 'all') {
+                filtered = filtered.filter(club => club.provincia === currentProvinciaFilter);
+            }
+            if (currentLigaFilter !== 'all') {
+                filtered = filtered.filter(club => club.liga_afiliada === currentLigaFilter || club.division === currentLigaFilter);
+            }
+            if (currentNombreFilter) {
+                const q = currentNombreFilter.toLowerCase();
+                filtered = filtered.filter(club => club.nombre.toLowerCase().includes(q));
+            }
+            if (currentCiudadFilter) {
+                const q = currentCiudadFilter.toLowerCase();
+                filtered = filtered.filter(club => club.ciudad.toLowerCase().includes(q));
+            }
+            if (currentLogoFilter !== 'all') {
+                if (currentLogoFilter === 'yes') {
+                    filtered = filtered.filter(club => club.has_logo);
+                } else if (currentLogoFilter === 'no') {
+                    filtered = filtered.filter(club => !club.has_logo);
+                }
+            }
+
+            return filtered;
+        }
+
+        // Filter markers by all active filters (AND logic)
+        function filterMarkers() {
+            // Clear all markers
+            markerGroup.clearLayers();
+
+            // Filter and add markers
+            allMarkers.forEach(marker => {
+                const clubsList = marker.clubsData;
+                const filteredClubs = applyFilters(clubsList);
+
+                if (filteredClubs.length > 0) {
+                    // Update popup with only filtered clubs
+                    marker.setPopupContent(buildPopup(filteredClubs));
+
+                    // Update icon to show logo of a filtered club
+                    const clubWithLogo = filteredClubs.find(c => c.has_logo);
+                    if (clubWithLogo) {
+                        marker.setIcon(makeIcon(`LOGOS/${clubWithLogo.id}.png`, filteredClubs.length));
+                    } else {
+                        marker.setIcon(new L.Icon.Default());
+                    }
+
+                    // Update click handler
+                    marker.off('click');
+                    marker.on('click', () => {
+                        if (filteredClubs.length === 1) {
+                            openSidebar(filteredClubs[0]);
+                        } else {
+                            marker.openPopup();
+                        }
+                    });
+
+                    markerGroup.addLayer(marker);
+                }
+            });
+
+            // Update stats
+            const visibleClubs = allMarkers
+                .filter(m => markerGroup.hasLayer(m))
+                .reduce((acc, m) => acc + applyFilters(m.clubsData).length, 0);
+            document.getElementById('stat-total').textContent = visibleClubs;
+        }
+        
+        
+        // Preload logos near current view
+        function preloadNearbyLogos() {
+            const bounds = map.getBounds();
+            const visibleMarkers = markerGroup.getLayers().filter(marker => {
+                const lat = marker.getLatLng().lat;
+                const lng = marker.getLatLng().lng;
+                return bounds.contains([lat, lng]);
+            });
+            
+            // Preload visible marker logos
+            visibleMarkers.forEach(marker => {
+                const html = marker.getElement()?.innerHTML || '';
+                const logoPath = html.match(/src="([^"]*LOGOS[^"]*)"/)?.[1];
+                if (logoPath && !logoCache.has(logoPath)) {
+                    const img = new Image();
+                    img.src = logoPath;
+                    logoCache.add(logoPath);
+                }
+            });
+        }
+        
+        // Cache para logos
+        const logoCache = new Set();
+        
+        // Sidebar functions
+        function openSidebar(club) {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('sidebar-content');
+            
+            let html = '';
+            html += `<div style="text-align: center;">`;
+            if (club.has_logo) {
+                html += `<img src="LOGOS/${club.id}.png" class="sidebar-logo">`;
+            }
+            html += `<h2 style="margin: 10px 0; color: #333;">${club.nombre}</h2>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Año de Fundación</div>`;
+            html += `<div class="sidebar-info-value">${club.anio_fundacion}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">División</div>`;
+            html += `<div class="sidebar-info-value">${club.division}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Ciudad</div>`;
+            html += `<div class="sidebar-info-value">${club.ciudad}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Provincia</div>`;
+            html += `<div class="sidebar-info-value">${club.provincia}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Liga Afiliada</div>`;
+            html += `<div class="sidebar-info-value">${club.liga_afiliada}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Estado</div>`;
+            html += `<div class="sidebar-info-value">${club.activo}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Liga en el Juego</div>`;
+            html += `<div class="sidebar-info-value">${club.liga_juego}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Jugable</div>`;
+            html += `<div class="sidebar-info-value">${club.jugable}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Estadio</div>`;
+            html += `<div class="sidebar-info-value">${club.estadio}</div>`;
+            html += `</div>`;
+            
+            html += `<div class="sidebar-info-row">`;
+            html += `<div class="sidebar-info-label">Camiseta Titular</div>`;
+            html += `<div class="sidebar-info-value">${club.camiseta}</div>`;
+            html += `</div>`;
+            
+            content.innerHTML = html;
+            sidebar.classList.add('open');
+        }
+        
+        function closeSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.remove('open');
+        }
+        
+        function togglePanel() {
+            const panel = document.querySelector('.info-panel');
+            const overlay = document.getElementById('panel-overlay');
+            const btn = document.getElementById('panel-toggle');
+            panel.classList.toggle('open');
+            const isOpen = panel.classList.contains('open');
+            overlay.style.display = isOpen ? 'block' : 'none';
+            btn.textContent = isOpen ? '✕' : '☰';
+        }
+        
+        function randomClub() {
+            if (!clubs || clubs.length === 0) {
+                alert('No hay clubes disponibles');
+                return;
+            }
+            const randomIndex = Math.floor(Math.random() * clubs.length);
+            const randomClub = clubs[randomIndex];
+            openSidebar(randomClub);
+            map.setView([randomClub.lat, randomClub.long], 12);
+        }
+    </script>
+</body>
+</html>
